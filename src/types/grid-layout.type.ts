@@ -10,7 +10,7 @@ export type PanelBlockType =
 
 export interface PanelBlock {
 	type: PanelBlockType
-	info: any[]
+	info: number[]
 }
 
 export type LayoutItemGrid = LayoutItem & PanelBlock

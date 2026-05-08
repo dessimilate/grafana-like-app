@@ -12,16 +12,17 @@ import {
 import 'chartjs-adapter-date-fns'
 import streamingPlugin from 'chartjs-plugin-streaming'
 import { motion } from 'framer-motion'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { Line } from 'react-chartjs-2'
 
 import { LayoutItemGrid, PanelBlockType } from '@/types/grid-layout.type'
 import { NextComponentType } from '@/types/next-component.type'
 
+import { maxMemory } from '@/config/panels.constant'
+
 import { usePanelStore } from '@/store/usePanelsStore'
 
-import { minMax } from '@/utils/funcs/min-max'
-import { getRandomInt } from '@/utils/funcs/random-number'
+import { getUsageColor } from '@/utils/funcs/getUsageColor'
 
 ChartJS.register(
 	LineElement,
@@ -46,99 +47,10 @@ interface PanelProps {
 	item: LayoutItemGrid
 }
 
-const maxMemory = 65536
-
 const StatisticElement: NextComponentType<StatisticElementProps> = ({
 	item
 }) => {
-	const { type, info } = item
-
-	const {
-		currentPanel: { periodTime, refreshTime },
-		changeInfo
-	} = usePanelStore()
-
-	const [interv, setInterv] = useState<NodeJS.Timeout>()
-
-	useEffect(() => {
-		clearInterval(interv)
-
-		const count = Math.floor((periodTime * 60) / refreshTime) * 2
-
-		const newTimer = setInterval(() => {
-			if (type === 'count-get') {
-				const reqCount = getRandomInt(1, 20)
-
-				const updatedInfo = [...info]
-
-				if (updatedInfo.length > count) updatedInfo.shift()
-				updatedInfo.push(reqCount)
-
-				changeInfo(item.i, updatedInfo)
-			}
-
-			if (type === 'avg-duration') {
-				const avgDuration = getRandomInt(10, 300)
-
-				const updatedInfo = [...info]
-
-				if (updatedInfo.length > count) updatedInfo.shift()
-				updatedInfo.push(avgDuration)
-
-				changeInfo(item.i, updatedInfo)
-			}
-
-			if (type === 'req-per-sec') {
-				const reqPerSec = getRandomInt(40, 70)
-
-				const updatedInfo = [...info]
-
-				if (updatedInfo.length > count) updatedInfo.shift()
-				updatedInfo.push(reqPerSec)
-
-				changeInfo(item.i, updatedInfo)
-			}
-
-			if (type === 'req-with-err') {
-				const reqWithErr = getRandomInt(2, 6)
-
-				const updatedInfo = [...info]
-
-				if (updatedInfo.length > count) updatedInfo.shift()
-				updatedInfo.push(reqWithErr)
-
-				changeInfo(item.i, updatedInfo)
-			}
-
-			if (type === 'cpu') {
-				const percent = getRandomInt(-7, 7)
-
-				const lastElement = info.at(-1) || 50
-
-				const updatedInfo = [...info]
-
-				if (updatedInfo.length > count) updatedInfo.shift()
-				updatedInfo.push(minMax(percent + lastElement, 0, 100))
-
-				changeInfo(item.i, updatedInfo)
-			}
-
-			if (type === 'memory') {
-				const mem = getRandomInt(-0.07 * maxMemory, 0.07 * maxMemory)
-
-				const lastElement = info.at(-1) || maxMemory / 2
-
-				const updatedInfo = [...info]
-
-				if (updatedInfo.length > count) updatedInfo.shift()
-				updatedInfo.push(minMax(mem + lastElement, 0, maxMemory))
-
-				changeInfo(item.i, updatedInfo)
-			}
-		}, refreshTime * 1000)
-
-		setInterv(newTimer)
-	}, [periodTime, refreshTime, item])
+	const { type } = item
 
 	return (
 		<div className='flex h-full w-full items-center justify-center p-4'>
@@ -285,7 +197,7 @@ const ReqPerSec: NextComponentType<PanelProps> = ({ item }) => {
 				borderColor: '#3b82f6',
 				borderWidth: 2,
 				pointRadius: 0,
-				data: []
+				data: [] as { x: number; y: number }[]
 			}
 		]
 	})
@@ -325,6 +237,23 @@ const ReqPerSec: NextComponentType<PanelProps> = ({ item }) => {
 		}
 	}
 
+	useEffect(() => {
+		const chart = chartRef.current
+		if (!chart || !item.info?.length) return
+
+		const now = Date.now()
+		const interval = refreshTime * 1000
+
+		const historicalData = item.info.map((value, index) => ({
+			x: now - (item.info.length - 1 - index) * interval,
+			y: value
+		}))
+
+		chart.data.datasets[0].data = historicalData
+
+		chart.update('none')
+	}, [item.info, refreshTime])
+
 	return (
 		<div className='flex h-full w-full flex-col items-center'>
 			<h2>Requests Per Second</h2>
@@ -355,7 +284,7 @@ const ReqWithErr: NextComponentType<PanelProps> = ({ item }) => {
 				borderColor: '#e03154',
 				borderWidth: 2,
 				pointRadius: 0,
-				data: []
+				data: [] as { x: number; y: number }[]
 			}
 		]
 	})
@@ -370,8 +299,7 @@ const ReqWithErr: NextComponentType<PanelProps> = ({ item }) => {
 				realtime: {
 					duration,
 					refresh: refreshTime * 1000,
-					delay: 1000,
-
+					delay: refreshTime * 1000,
 					onRefresh: (chart: any) => {
 						const lastValue =
 							item.info.length > 0 ? item.info[item.info.length - 1] : 0
@@ -389,11 +317,26 @@ const ReqWithErr: NextComponentType<PanelProps> = ({ item }) => {
 			}
 		},
 		plugins: {
-			legend: {
-				display: false
-			}
+			legend: { display: false }
 		}
 	}
+
+	useEffect(() => {
+		const chart = chartRef.current
+		if (!chart || !item.info?.length) return
+
+		const now = Date.now()
+		const interval = refreshTime * 1000
+
+		const historicalData = item.info.map((value, index) => ({
+			x: now - (item.info.length - 1 - index) * interval,
+			y: value
+		}))
+
+		chart.data.datasets[0].data = historicalData
+
+		chart.update('none')
+	}, [item.info, refreshTime])
 
 	return (
 		<div className='flex h-full w-full flex-col items-center'>
@@ -423,7 +366,7 @@ const Cpu: NextComponentType<PanelProps> = ({ item }) => {
 	const progressOffset = arcLength - (usage / 100) * arcLength
 
 	return (
-		<div className='flex h-full w-full flex-col items-center'>
+		<div className='relative flex h-full w-full flex-col items-center'>
 			<h2>CPU Usage</h2>
 			<div className='relative flex h-full w-full flex-1 items-center justify-center gap-4 py-2'>
 				<svg
@@ -459,6 +402,11 @@ const Cpu: NextComponentType<PanelProps> = ({ item }) => {
 					{item.info.length > 0 ? item.info[item.info.length - 1] : 0}%
 				</div>
 			</div>
+
+			<motion.div
+				animate={{ backgroundColor: getUsageColor(usage) }}
+				className='animate-blink absolute top-0 right-0 h-4 w-4 rounded-full'
+			/>
 		</div>
 	)
 }
@@ -477,7 +425,7 @@ const Memory: NextComponentType<PanelProps> = ({ item }) => {
 	const progressOffset = arcLength - (usage / 100) * arcLength
 
 	return (
-		<div className='flex h-full w-full flex-col items-center'>
+		<div className='relative flex h-full w-full flex-col items-center'>
 			<h2>Memory Usage</h2>
 			<div className='relative flex h-full w-full flex-1 items-center justify-center gap-4 py-2'>
 				<svg
@@ -510,10 +458,15 @@ const Memory: NextComponentType<PanelProps> = ({ item }) => {
 				</svg>
 
 				<div className='absolute bottom-10 left-1/2 flex -translate-x-1/2 transform flex-col items-center text-2xl'>
-					<span>{(item.info.at(-1) / 1024).toFixed(2)}gb</span>
+					<span>{((item.info.at(-1) || 0) / 1024).toFixed(2)}gb</span>
 					<span>{usage}%</span>
 				</div>
 			</div>
+
+			<motion.div
+				animate={{ backgroundColor: getUsageColor(usage) }}
+				className='animate-blink absolute top-0 right-0 h-4 w-4 rounded-full'
+			/>
 		</div>
 	)
 }

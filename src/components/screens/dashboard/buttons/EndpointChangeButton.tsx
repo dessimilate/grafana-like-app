@@ -8,22 +8,22 @@ import { usePanelStore } from '@/store/usePanelsStore'
 
 import { useOutside } from '@/hooks/useOutside'
 
-const AppChangeButton: NextComponentType = () => {
-	const { currentPanel, panels, changeCurrentPanel } = usePanelStore()
+const EndPointChangeButton: NextComponentType = () => {
+	const { currentPanel, panels, changeCurrentEndpoint } = usePanelStore()
 
 	const { ref, isShow, setIsShow } = useOutside(false)
 
 	return (
 		<div className='relative flex'>
 			<div className='bg-background-second flex items-center border px-2 py-1 text-sm'>
-				Application Name
+				Endpoint
 			</div>
 			<div className='border border-l-0 px-2 py-1 text-sm select-none'>
 				<button
 					className='flex items-center'
 					onClick={() => setIsShow(state => !state)}
 				>
-					{currentPanel.name}
+					{currentPanel.layout.currentEndpoint}
 					<ChevronDown className='ml-1 w-4' />
 				</button>
 
@@ -32,17 +32,23 @@ const AppChangeButton: NextComponentType = () => {
 						ref={ref}
 						className='bg-background-second absolute top-full left-0 z-10 mt-1 flex w-full flex-col gap-2 border py-2'
 					>
-						{panels.map(panel => (
-							<button
-								onClick={() => {
-									changeCurrentPanel(panel.name)
-									setIsShow(false)
-								}}
-								key={panel.name + 'app-name'}
-							>
-								{panel.name}
-							</button>
-						))}
+						{panels
+							.find(
+								panel =>
+									panel.layout.currentEndpoint ===
+									currentPanel.layout.currentEndpoint
+							)
+							?.layout.withEndpoints.map(withEndpoint => (
+								<button
+									onClick={() => {
+										changeCurrentEndpoint(withEndpoint.endpoint)
+										setIsShow(false)
+									}}
+									key={withEndpoint.endpoint + 'endpoint-name'}
+								>
+									{withEndpoint.endpoint}
+								</button>
+							))}
 					</div>
 				)}
 			</div>
@@ -50,4 +56,4 @@ const AppChangeButton: NextComponentType = () => {
 	)
 }
 
-export { AppChangeButton }
+export { EndPointChangeButton }

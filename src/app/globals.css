@@ -49,7 +49,7 @@
 	--animate-fade-in-500: fadeIn 0.5s ease-out;
 	--animate-fade-out: fadeOut 0.2s ease-out;
 	--animate-bottom-in: bottomIn 0.7s cubic-bezier(0.49, 0.28, 0, 1) forwards;
-	--animate-noise: noise 0.2s infinite steps(1);
+	--animate-blink: blink 2s infinite;
 
 	--shadow-center-md: 0 0 16px -7px black;
 	--drop-shadow-center-md: 0 0 14px 10px rgba(0, 0, 0, 1);
@@ -111,6 +111,18 @@ li {
 	}
 	to {
 		translate: 0 0;
+		opacity: 1;
+	}
+}
+
+@keyframes blink {
+	0% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
+	to {
 		opacity: 1;
 	}
 }

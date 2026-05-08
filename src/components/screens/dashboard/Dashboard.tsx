@@ -5,10 +5,9 @@ import { noCompactor } from 'react-grid-layout/core'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 
-import { LayoutItemGrid } from '@/types/grid-layout.type'
 import { NextComponentType } from '@/types/next-component.type'
 
-import { usePanelStore } from '@/store/usePanelsStore'
+import { LayoutWrapper, usePanelStore } from '@/store/usePanelsStore'
 
 import { StatisticElement } from './StatisticElement'
 import { Buttons } from './buttons/Buttons'
@@ -18,6 +17,12 @@ const Dashboard: NextComponentType = () => {
 
 	const { currentPanel, changeLayout } = usePanelStore()
 
+	const fullLayout = [
+		...currentPanel.layout.static,
+		...(currentPanel.layout.withEndpoints.find(
+			w => w.endpoint === currentPanel.layout.currentEndpoint
+		)?.data || [])
+	]
 
 	return (
 		<div
@@ -28,9 +33,9 @@ const Dashboard: NextComponentType = () => {
 
 			<Responsive
 				layouts={{
-					lg: currentPanel.layout,
-					md: currentPanel.layout,
-					sm: currentPanel.layout
+					lg: fullLayout,
+					md: fullLayout,
+					sm: fullLayout
 				}}
 				breakpoints={{ lg: 1200, md: 996, sm: 768 }}
 				cols={{ lg: 6, md: 6, sm: 6 }}
@@ -40,30 +45,49 @@ const Dashboard: NextComponentType = () => {
 				width={width}
 				compactor={noCompactor}
 				onLayoutChange={layout => {
-					const newLayout = layout.reduce(
-						(res: LayoutItemGrid[], item: LayoutItem) => {
-							const currentItem: LayoutItemGrid = {
-								i: item.i,
-								x: item.x,
-								y: item.y,
-								w: item.w,
-								h: item.h,
-								type:
-									currentPanel.layout.find(l => l.i === item.i)?.type ||
-									'count-get',
-								info: currentPanel.layout.find(l => l.i === item.i)?.info || []
-							}
+					const newLayout: LayoutWrapper = {
+						...currentPanel.layout,
+						static: [],
+						withEndpoints: currentPanel.layout.withEndpoints.map(w => ({
+							...w,
+							data:
+								w.endpoint === currentPanel.layout.currentEndpoint ? [] : w.data
+						}))
+					}
 
-							res.push(currentItem)
-							return res
-						},
-						[]
-					)
+					layout.forEach((item: LayoutItem) => {
+						const isStatic = currentPanel.layout.static.some(
+							s => s.i === item.i
+						)
+
+						const originalItem = fullLayout.find(l => l.i === item.i)
+
+						const changedItem = {
+							i: item.i,
+							x: item.x,
+							y: item.y,
+							w: item.w,
+							h: item.h,
+							type: originalItem?.type || 'count-get',
+							info: originalItem?.info || []
+						}
+
+						if (isStatic) {
+							newLayout.static.push(changedItem)
+						} else {
+							const epIndex = newLayout.withEndpoints.findIndex(
+								w => w.endpoint === currentPanel.layout.currentEndpoint
+							)
+							if (epIndex !== -1) {
+								newLayout.withEndpoints[epIndex].data.push(changedItem)
+							}
+						}
+					})
 
 					changeLayout(newLayout)
 				}}
 			>
-				{currentPanel.layout.map(item => (
+				{fullLayout.map(item => (
 					<div
 						key={item.i}
 						className='bg-background-second border'
