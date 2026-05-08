@@ -1,16 +1,17 @@
 'use client'
 
 import { ChevronDown, Clock10 } from 'lucide-react'
-import { useState } from 'react'
 
 import { NextComponentType } from '@/types/next-component.type'
 
 import { usePanelStore } from '@/store/usePanelsStore'
 
+import { useOutside } from '@/hooks/useOutside'
+
 const PeriodTimeButton: NextComponentType = () => {
 	const { currentPanel, changePeriodTime } = usePanelStore()
 
-	const [isPeriodOpen, setIsPeriodOpen] = useState(false)
+	const { ref, isShow, setIsShow } = useOutside(false)
 
 	const periodMinutes = currentPanel.periodTime
 	const periodHours = Math.floor(periodMinutes / 60)
@@ -25,7 +26,7 @@ const PeriodTimeButton: NextComponentType = () => {
 		<div className='bg-background-second relative border px-2 py-1 text-sm'>
 			<button
 				className='flex items-center'
-				onClick={() => setIsPeriodOpen(state => !state)}
+				onClick={() => setIsShow(state => !state)}
 			>
 				<Clock10 className='mr-2 w-5' />
 				<div className='flex gap-1'>
@@ -36,15 +37,18 @@ const PeriodTimeButton: NextComponentType = () => {
 				<ChevronDown className='ml-1 w-4' />
 			</button>
 
-			{isPeriodOpen && (
-				<div className='bg-background-second animate-fade-in-200 absolute top-full left-0 z-10 mt-1 flex w-full flex-col border px-2 text-center text-sm'>
+			{isShow && (
+				<div
+					ref={ref}
+					className='bg-background-second animate-fade-in-200 absolute top-full left-0 z-10 mt-1 flex w-full flex-col border px-2 text-center text-sm'
+				>
 					{periodVariants.map(variant => (
 						<button
 							key={variant.value + 'period'}
 							className='py-1'
 							onClick={() => {
 								changePeriodTime(variant.value)
-								setIsPeriodOpen(false)
+								setIsShow(false)
 							}}
 						>
 							{variant.label}

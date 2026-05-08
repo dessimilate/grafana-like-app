@@ -1,16 +1,17 @@
 'use client'
 
 import { ChevronDown } from 'lucide-react'
-import { useState } from 'react'
 
 import { NextComponentType } from '@/types/next-component.type'
 
 import { usePanelStore } from '@/store/usePanelsStore'
 
+import { useOutside } from '@/hooks/useOutside'
+
 const AppChangeButton: NextComponentType = () => {
 	const { currentPanel, panels, changeCurrentPanel } = usePanelStore()
 
-	const [isAppChangeOpen, setIsAppChangeOpen] = useState(false)
+	const { ref, isShow, setIsShow } = useOutside(false)
 
 	return (
 		<div className='relative flex'>
@@ -20,14 +21,17 @@ const AppChangeButton: NextComponentType = () => {
 			<div className='border border-l-0 px-2 py-1 text-sm select-none'>
 				<button
 					className='flex items-center'
-					onClick={() => setIsAppChangeOpen(state => !state)}
+					onClick={() => setIsShow(state => !state)}
 				>
 					{currentPanel.name}
 					<ChevronDown className='ml-1 w-4' />
 				</button>
 
-				{isAppChangeOpen && (
-					<div className='bg-background-second absolute top-full left-0 z-10 mt-1 flex w-full flex-col gap-2 border py-2'>
+				{isShow && (
+					<div
+						ref={ref}
+						className='bg-background-second absolute top-full left-0 z-10 mt-1 flex w-full flex-col gap-2 border py-2'
+					>
 						{panels.map(panel => (
 							<button
 								onClick={() => changeCurrentPanel(panel.name)}

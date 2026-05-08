@@ -7,10 +7,12 @@ import { NextComponentType } from '@/types/next-component.type'
 
 import { usePanelStore } from '@/store/usePanelsStore'
 
+import { useOutside } from '@/hooks/useOutside'
+
 const RefreshTimeButton: NextComponentType = () => {
 	const { currentPanel, changeRefreshTime } = usePanelStore()
 
-	const [isRefreshOpen, setIsRefreshOpen] = useState(false)
+	const { ref, isShow, setIsShow } = useOutside(false)
 
 	const refreshSeconds = currentPanel.refreshTime
 	const refreshMinutes = Math.floor(refreshSeconds / 60)
@@ -25,7 +27,7 @@ const RefreshTimeButton: NextComponentType = () => {
 		<div className='bg-background-second relative border px-2 py-1 text-sm'>
 			<button
 				className='flex items-center'
-				onClick={() => setIsRefreshOpen(state => !state)}
+				onClick={() => setIsShow(state => !state)}
 			>
 				<RefreshCcw className='mr-2 w-5' />
 				<div className='flex gap-1'>
@@ -36,15 +38,18 @@ const RefreshTimeButton: NextComponentType = () => {
 				<ChevronDown className='ml-1 w-4' />
 			</button>
 
-			{isRefreshOpen && (
-				<div className='bg-background-second animate-fade-in-200 absolute top-full left-0 z-10 mt-1 flex w-full flex-col border px-2 text-center text-sm'>
+			{isShow && (
+				<div
+					ref={ref}
+					className='bg-background-second animate-fade-in-200 absolute top-full left-0 z-10 mt-1 flex w-full flex-col border px-2 text-center text-sm'
+				>
 					{refreshVariants.map(variant => (
 						<button
 							key={variant.value + 'refresh'}
 							className='py-1'
 							onClick={() => {
 								changeRefreshTime(variant.value)
-								setIsRefreshOpen(false)
+								setIsShow(false)
 							}}
 						>
 							{variant.label}
