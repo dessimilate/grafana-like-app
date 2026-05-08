@@ -67,7 +67,7 @@ const StatisticElement: NextComponentType<StatisticElementProps> = ({
 
 		const newTimer = setInterval(() => {
 			if (type === 'count-get') {
-				const reqCount = getRandomInt(refreshTime, refreshTime * 20)
+				const reqCount = getRandomInt(1, 20)
 
 				const updatedInfo = [...info]
 
@@ -78,7 +78,7 @@ const StatisticElement: NextComponentType<StatisticElementProps> = ({
 			}
 
 			if (type === 'avg-duration') {
-				const avgDuration = getRandomInt(refreshTime * 10, refreshTime * 300)
+				const avgDuration = getRandomInt(10, 300)
 
 				const updatedInfo = [...info]
 
@@ -89,7 +89,7 @@ const StatisticElement: NextComponentType<StatisticElementProps> = ({
 			}
 
 			if (type === 'req-per-sec') {
-				const reqPerSec = getRandomInt(refreshTime * 40, refreshTime * 70)
+				const reqPerSec = getRandomInt(40, 70)
 
 				const updatedInfo = [...info]
 
@@ -100,7 +100,7 @@ const StatisticElement: NextComponentType<StatisticElementProps> = ({
 			}
 
 			if (type === 'req-with-err') {
-				const reqWithErr = getRandomInt(refreshTime * 2, refreshTime * 6)
+				const reqWithErr = getRandomInt(2, 6)
 
 				const updatedInfo = [...info]
 
@@ -180,7 +180,7 @@ const CountGet: NextComponentType<PanelProps> = ({ item }) => {
 			<h2>Get Requests Count</h2>
 			<div className='grid h-full w-full flex-1 grid-cols-1 grid-rows-2 gap-4 py-2'>
 				<div className='flex flex-col items-center justify-center border p-1'>
-					<h3>AVG Requests in {refreshTime % 60}s</h3>
+					<h3>AVG Requests</h3>
 					<p>
 						{(item.info.reduce((a, b) => a + b, 0) / item.info.length).toFixed(
 							2
@@ -204,12 +204,8 @@ const CountGet: NextComponentType<PanelProps> = ({ item }) => {
 }
 
 const AvgDuration: NextComponentType<PanelProps> = ({ item }) => {
-	const {
-		currentPanel: { periodTime, refreshTime }
-	} = usePanelStore()
-
-	const minValue = refreshTime * 10
-	const maxValue = refreshTime * 300
+	const minValue = 10
+	const maxValue = 300
 
 	const coefficient = 0.9
 
@@ -319,7 +315,7 @@ const ReqPerSec: NextComponentType<PanelProps> = ({ item }) => {
 			},
 			y: {
 				min: 0,
-				max: refreshTime * 80
+				max: 80
 			}
 		},
 		plugins: {
@@ -389,7 +385,7 @@ const ReqWithErr: NextComponentType<PanelProps> = ({ item }) => {
 			},
 			y: {
 				min: 0,
-				max: refreshTime * 7
+				max: 7
 			}
 		},
 		plugins: {
@@ -422,7 +418,7 @@ const Cpu: NextComponentType<PanelProps> = ({ item }) => {
 
 	const arcLength = fullCircumference * 0.75
 
-	const usage = item.info.at(-1)
+	const usage = item.info.at(-1) || 0
 
 	const progressOffset = arcLength - (usage / 100) * arcLength
 
@@ -476,7 +472,7 @@ const Memory: NextComponentType<PanelProps> = ({ item }) => {
 
 	const arcLength = fullCircumference * 0.75
 
-	const usage = Math.round((item.info.at(-1) / maxMemory) * 100)
+	const usage = Math.round(((item.info.at(-1) || 0) / maxMemory) * 100)
 
 	const progressOffset = arcLength - (usage / 100) * arcLength
 
