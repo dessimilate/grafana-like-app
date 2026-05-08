@@ -19,7 +19,7 @@ const PeriodTimeButton: NextComponentType = () => {
 	const periodVariants = [
 		{ label: 'Last 1m', value: 1 },
 		{ label: 'Last 5m', value: 5 },
-		{ label: 'Last 30m', value: 30 }
+		{ label: 'Last 10m', value: 10 }
 	]
 
 	return (
