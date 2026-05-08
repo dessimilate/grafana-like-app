@@ -1,0 +1,59 @@
+'use client'
+
+import { ChevronDown, RefreshCcw } from 'lucide-react'
+import { useState } from 'react'
+
+import { NextComponentType } from '@/types/next-component.type'
+
+import { usePanelStore } from '@/store/usePanelsStore'
+
+const RefreshTimeButton: NextComponentType = () => {
+	const { currentPanel, changeRefreshTime } = usePanelStore()
+
+	const [isRefreshOpen, setIsRefreshOpen] = useState(false)
+
+	const refreshSeconds = currentPanel.refreshTime
+	const refreshMinutes = Math.floor(refreshSeconds / 60)
+
+	const refreshVariants = [
+		{ label: 'Refresh 1s', value: 1 },
+		{ label: 'Refresh 5s', value: 5 },
+		{ label: 'Refresh 15s', value: 15 }
+	]
+
+	return (
+		<div className='bg-background-second relative border px-2 py-1 text-sm'>
+			<button
+				className='flex items-center'
+				onClick={() => setIsRefreshOpen(state => !state)}
+			>
+				<RefreshCcw className='mr-2 w-5' />
+				<div className='flex gap-1'>
+					<span>Refresh</span>
+					{!!refreshMinutes && <span>{refreshMinutes}m</span>}
+					{!!(refreshSeconds % 60) && <span>{refreshSeconds % 60}s</span>}
+				</div>
+				<ChevronDown className='ml-1 w-4' />
+			</button>
+
+			{isRefreshOpen && (
+				<div className='bg-background-second animate-fade-in-200 absolute top-full left-0 z-10 mt-1 flex w-full flex-col border px-2 text-center text-sm'>
+					{refreshVariants.map(variant => (
+						<button
+							key={variant.value + 'refresh'}
+							className='py-1'
+							onClick={() => {
+								changeRefreshTime(variant.value)
+								setIsRefreshOpen(false)
+							}}
+						>
+							{variant.label}
+						</button>
+					))}
+				</div>
+			)}
+		</div>
+	)
+}
+
+export { RefreshTimeButton }

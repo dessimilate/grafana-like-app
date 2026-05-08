@@ -1,0 +1,176 @@
+import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
+import { immer } from 'zustand/middleware/immer'
+
+import { LayoutItemGrid } from '@/types/grid-layout.type'
+
+interface Panel {
+	name: string
+	periodTime: number //in minutes
+	refreshTime: number //in secondes
+	layout: LayoutItemGrid[]
+}
+
+interface PanelStates {
+	panels: Panel[]
+	currentPanel: Panel
+}
+
+interface PanelActions {
+	changeCurrentPanel: (name: string) => void
+	addPanel: (name: string) => boolean
+	deletePanel: (name: string) => boolean
+	changePeriodTime: (time: number) => void
+	changeRefreshTime: (time: number) => void
+	changeLayout: (layout: LayoutItemGrid[]) => void
+	changeInfo: (i: string, info: any[]) => void
+}
+
+export type PanelStore = PanelStates & PanelActions
+
+const defaultTime: Pick<Panel, 'periodTime' | 'refreshTime'> = {
+	periodTime: 5,
+	refreshTime: 1
+}
+
+const defaultLayout: LayoutItemGrid[] = [
+	{ i: '1', x: 0, y: 0, w: 2, h: 2, type: 'count-get', info: [] },
+	{ i: '2', x: 2, y: 0, w: 4, h: 2, maxH: 2, type: 'avg-duration', info: [] },
+	{ i: '3', x: 0, y: 2, w: 3, h: 3, minH: 3, type: 'req-per-sec', info: [] },
+	{ i: '4', x: 3, y: 2, w: 3, h: 3, minH: 3, type: 'req-with-err', info: [] }
+]
+
+const defaultStates = {
+	...defaultTime,
+	layout: defaultLayout
+}
+
+const defaultPanel1: Panel = {
+	name: 'Frontend',
+	...defaultStates
+}
+
+const defaultPanel2: Panel = {
+	name: 'Backend',
+	...defaultStates
+}
+
+const defaultPanel3: Panel = {
+	name: 'Postgresql',
+	...defaultStates
+}
+
+const initState: PanelStates = {
+	panels: [defaultPanel1, defaultPanel2, defaultPanel3],
+	currentPanel: defaultPanel1
+}
+
+export const usePanelStore = create<PanelStore>()(
+	persist(
+		immer((set, get) => ({
+			...initState,
+
+			//CHANGE CURRENT PANEL
+			changeCurrentPanel: name => {
+				const panel = get().panels.find(panel => panel.name === name)
+				if (panel) {
+					set(state => {
+						state.currentPanel = panel
+					})
+				}
+			},
+
+			//ADD
+			addPanel: name => {
+				const isExists = !!get().panels.find(panel => panel.name === name)
+
+				set(state => {
+					const newPanel = { name, ...defaultStates }
+					if (!isExists) state.panels.push(newPanel)
+				})
+
+				//if not exists -> add panel(return true), else return false
+				return !isExists
+			},
+
+			//DELETE
+			deletePanel: name => {
+				const index = get().panels.findIndex(panel => panel.name === name)
+				const isExists = index !== -1
+
+				set(state => {
+					if (isExists) state.panels.splice(index, 1)
+				})
+
+				//if exists -> delete panel(return true), else return false
+				return isExists
+			},
+
+			//CHANGE PERIOD TIME
+			changePeriodTime: time => {
+				set(state => {
+					state.currentPanel.periodTime = time
+
+					const index = get().panels.findIndex(
+						panel => panel.name === get().currentPanel.name
+					)
+					if (index !== -1) state.panels[index].periodTime = time
+				})
+			},
+
+			//CHANGE REFRESH TIME
+			changeRefreshTime: time => {
+				set(state => {
+					state.currentPanel.refreshTime = time
+
+					const index = get().panels.findIndex(
+						panel => panel.name === get().currentPanel.name
+					)
+					if (index !== -1) state.panels[index].refreshTime = time
+				})
+			},
+
+			//CHANGE LAYOUT
+			changeLayout: layout => {
+				set(state => {
+					state.currentPanel.layout = layout
+
+					const index = get().panels.findIndex(
+						panel => panel.name === get().currentPanel.name
+					)
+					if (index !== -1) state.panels[index].layout = layout
+				})
+			},
+
+			//CHANGE INFO
+			changeInfo: (i, info) => {
+				set(state => {
+					const layoutIndex = state.currentPanel.layout.findIndex(
+						item => item.i === i
+					)
+
+					if (layoutIndex !== -1) {
+						state.currentPanel.layout[layoutIndex].info = info
+					}
+
+					const index = get().panels.findIndex(
+						panel => panel.name === get().currentPanel.name
+					)
+					if (index !== -1) {
+						const layoutIndex = state.panels[index].layout.findIndex(
+							item => item.i === i
+						)
+						state.panels[index].layout[layoutIndex].info = info
+					}
+				})
+			}
+		})),
+		{
+			name: 'panel-storage',
+			partialize: state => ({
+				panels: state.panels,
+				currentPanel: state.currentPanel
+			})
+		}
+	)
+)
