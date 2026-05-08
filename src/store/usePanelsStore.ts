@@ -37,7 +37,9 @@ const defaultLayout: LayoutItemGrid[] = [
 	{ i: '1', x: 0, y: 0, w: 2, h: 2, type: 'count-get', info: [] },
 	{ i: '2', x: 2, y: 0, w: 4, h: 2, maxH: 2, type: 'avg-duration', info: [] },
 	{ i: '3', x: 0, y: 2, w: 3, h: 3, minH: 3, type: 'req-per-sec', info: [] },
-	{ i: '4', x: 3, y: 2, w: 3, h: 3, minH: 3, type: 'req-with-err', info: [] }
+	{ i: '4', x: 3, y: 2, w: 3, h: 3, minH: 3, type: 'req-with-err', info: [] },
+	{ i: '5', x: 0, y: 5, w: 2, h: 2, type: 'cpu', info: [] },
+	{ i: '6', x: 2, y: 5, w: 2, h: 2, type: 'memory', info: [] }
 ]
 
 const defaultStates = {

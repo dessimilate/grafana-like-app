@@ -5,6 +5,8 @@ export type PanelBlockType =
 	| 'avg-duration'
 	| 'req-per-sec'
 	| 'req-with-err'
+	| 'cpu'
+	| 'memory'
 
 export interface PanelBlock {
 	type: PanelBlockType

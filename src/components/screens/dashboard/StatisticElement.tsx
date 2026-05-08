@@ -20,6 +20,7 @@ import { NextComponentType } from '@/types/next-component.type'
 
 import { usePanelStore } from '@/store/usePanelsStore'
 
+import { minMax } from '@/utils/funcs/min-max'
 import { getRandomInt } from '@/utils/funcs/random-number'
 
 ChartJS.register(
@@ -44,6 +45,8 @@ interface SwitchElementProps {
 interface PanelProps {
 	item: LayoutItemGrid
 }
+
+const maxMemory = 65536
 
 const StatisticElement: NextComponentType<StatisticElementProps> = ({
 	item
@@ -75,34 +78,60 @@ const StatisticElement: NextComponentType<StatisticElementProps> = ({
 			}
 
 			if (type === 'avg-duration') {
-				const reqDuration = getRandomInt(refreshTime * 10, refreshTime * 300)
+				const avgDuration = getRandomInt(refreshTime * 10, refreshTime * 300)
 
 				const updatedInfo = [...info]
 
 				if (updatedInfo.length > count) updatedInfo.shift()
-				updatedInfo.push(reqDuration)
+				updatedInfo.push(avgDuration)
 
 				changeInfo(item.i, updatedInfo)
 			}
 
 			if (type === 'req-per-sec') {
-				const reqDuration = getRandomInt(refreshTime * 40, refreshTime * 70)
+				const reqPerSec = getRandomInt(refreshTime * 40, refreshTime * 70)
 
 				const updatedInfo = [...info]
 
 				if (updatedInfo.length > count) updatedInfo.shift()
-				updatedInfo.push(reqDuration)
+				updatedInfo.push(reqPerSec)
 
 				changeInfo(item.i, updatedInfo)
 			}
 
 			if (type === 'req-with-err') {
-				const reqDuration = getRandomInt(refreshTime * 2, refreshTime * 6)
+				const reqWithErr = getRandomInt(refreshTime * 2, refreshTime * 6)
 
 				const updatedInfo = [...info]
 
 				if (updatedInfo.length > count) updatedInfo.shift()
-				updatedInfo.push(reqDuration)
+				updatedInfo.push(reqWithErr)
+
+				changeInfo(item.i, updatedInfo)
+			}
+
+			if (type === 'cpu') {
+				const percent = getRandomInt(-7, 7)
+
+				const lastElement = info.at(-1) || 50
+
+				const updatedInfo = [...info]
+
+				if (updatedInfo.length > count) updatedInfo.shift()
+				updatedInfo.push(minMax(percent + lastElement, 0, 100))
+
+				changeInfo(item.i, updatedInfo)
+			}
+
+			if (type === 'memory') {
+				const mem = getRandomInt(-0.07 * maxMemory, 0.07 * maxMemory)
+
+				const lastElement = info.at(-1) || maxMemory / 2
+
+				const updatedInfo = [...info]
+
+				if (updatedInfo.length > count) updatedInfo.shift()
+				updatedInfo.push(minMax(mem + lastElement, 0, maxMemory))
 
 				changeInfo(item.i, updatedInfo)
 			}
@@ -134,6 +163,10 @@ const SwitchElement: NextComponentType<SwitchElementProps> = ({
 			return <ReqPerSec item={item} />
 		case 'req-with-err':
 			return <ReqWithErr item={item} />
+		case 'cpu':
+			return <Cpu item={item} />
+		case 'memory':
+			return <Memory item={item} />
 	}
 }
 
@@ -375,6 +408,115 @@ const ReqWithErr: NextComponentType<PanelProps> = ({ item }) => {
 					data={dataRef.current}
 					options={options}
 				/>
+			</div>
+		</div>
+	)
+}
+
+const Cpu: NextComponentType<PanelProps> = ({ item }) => {
+	const size = 220
+	const strokeWidth = 18
+	const radius = (size - strokeWidth) / 2
+
+	const fullCircumference = 2 * Math.PI * radius
+
+	const arcLength = fullCircumference * 0.75
+
+	const usage = item.info.at(-1)
+
+	const progressOffset = arcLength - (usage / 100) * arcLength
+
+	return (
+		<div className='flex h-full w-full flex-col items-center'>
+			<h2>CPU Usage</h2>
+			<div className='relative flex h-full w-full flex-1 items-center justify-center gap-4 py-2'>
+				<svg
+					viewBox={`0 0 ${size} ${size}`}
+					className='h-full w-auto rotate-[-225deg]'
+				>
+					<circle
+						cx={size / 2}
+						cy={size / 2}
+						r={radius}
+						fill='none'
+						className='stroke-graph'
+						strokeWidth={strokeWidth}
+						strokeDasharray={`${arcLength} ${fullCircumference}`}
+						strokeLinecap='round'
+					/>
+
+					{/* Active **/}
+					<circle
+						cx={size / 2}
+						cy={size / 2}
+						r={radius}
+						fill='none'
+						strokeWidth={strokeWidth}
+						strokeDasharray={`${arcLength} ${fullCircumference}`}
+						strokeDashoffset={progressOffset}
+						strokeLinecap='round'
+						className='stroke-blue-500 transition-all duration-700 ease-out'
+					/>
+				</svg>
+
+				<div className='absolute bottom-10 left-1/2 -translate-x-1/2 transform text-2xl'>
+					{item.info.length > 0 ? item.info[item.info.length - 1] : 0}%
+				</div>
+			</div>
+		</div>
+	)
+}
+
+const Memory: NextComponentType<PanelProps> = ({ item }) => {
+	const size = 220
+	const strokeWidth = 18
+	const radius = (size - strokeWidth) / 2
+
+	const fullCircumference = 2 * Math.PI * radius
+
+	const arcLength = fullCircumference * 0.75
+
+	const usage = Math.round((item.info.at(-1) / maxMemory) * 100)
+
+	const progressOffset = arcLength - (usage / 100) * arcLength
+
+	return (
+		<div className='flex h-full w-full flex-col items-center'>
+			<h2>Memory Usage</h2>
+			<div className='relative flex h-full w-full flex-1 items-center justify-center gap-4 py-2'>
+				<svg
+					viewBox={`0 0 ${size} ${size}`}
+					className='h-full w-auto rotate-[-225deg]'
+				>
+					<circle
+						cx={size / 2}
+						cy={size / 2}
+						r={radius}
+						fill='none'
+						className='stroke-graph'
+						strokeWidth={strokeWidth}
+						strokeDasharray={`${arcLength} ${fullCircumference}`}
+						strokeLinecap='round'
+					/>
+
+					{/* Active **/}
+					<circle
+						cx={size / 2}
+						cy={size / 2}
+						r={radius}
+						fill='none'
+						strokeWidth={strokeWidth}
+						strokeDasharray={`${arcLength} ${fullCircumference}`}
+						strokeDashoffset={progressOffset}
+						strokeLinecap='round'
+						className='stroke-green-500 transition-all duration-700 ease-out'
+					/>
+				</svg>
+
+				<div className='absolute bottom-10 left-1/2 flex -translate-x-1/2 transform flex-col items-center text-2xl'>
+					<span>{(item.info.at(-1) / 1024).toFixed(2)}gb</span>
+					<span>{usage}%</span>
+				</div>
 			</div>
 		</div>
 	)

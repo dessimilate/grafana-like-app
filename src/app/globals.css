@@ -43,6 +43,8 @@
 
 	--color-border-main: rgba(200, 169, 110, 0.3);
 
+	--color-graph: rgb(39, 39, 42);
+
 	--animate-fade-in-200: fadeIn 0.2s ease-out;
 	--animate-fade-in-500: fadeIn 0.5s ease-out;
 	--animate-fade-out: fadeOut 0.2s ease-out;
