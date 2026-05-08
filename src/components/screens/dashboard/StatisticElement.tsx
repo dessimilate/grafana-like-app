@@ -12,7 +12,7 @@ import {
 import 'chartjs-adapter-date-fns'
 import streamingPlugin from 'chartjs-plugin-streaming'
 import { motion } from 'framer-motion'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { Line } from 'react-chartjs-2'
 
 import { LayoutItemGrid, PanelBlockType } from '@/types/grid-layout.type'
@@ -79,6 +79,8 @@ const SwitchElement: NextComponentType<SwitchElementProps> = ({
 			return <Cpu item={item} />
 		case 'memory':
 			return <Memory item={item} />
+		case 'disk':
+			return <Disk item={item} />
 	}
 }
 
@@ -202,40 +204,43 @@ const ReqPerSec: NextComponentType<PanelProps> = ({ item }) => {
 		]
 	})
 
-	const options: any = {
-		responsive: true,
-		maintainAspectRatio: false,
-		animation: false,
-		scales: {
-			x: {
-				type: 'realtime',
-				realtime: {
-					duration,
-					refresh: refreshTime * 1000,
-					delay: 1000,
+	const options: any = useMemo(
+		() => ({
+			responsive: true,
+			maintainAspectRatio: false,
+			animation: false,
+			scales: {
+				x: {
+					type: 'realtime',
+					realtime: {
+						duration,
+						refresh: refreshTime * 1000,
+						delay: 1000,
 
-					onRefresh: (chart: any) => {
-						const lastValue =
-							item.info.length > 0 ? item.info[item.info.length - 1] : 0
+						onRefresh: (chart: any) => {
+							const lastValue =
+								item.info.length > 0 ? item.info[item.info.length - 1] : 0
 
-						chart.data.datasets[0].data.push({
-							x: Date.now(),
-							y: lastValue
-						})
+							chart.data.datasets[0].data.push({
+								x: Date.now(),
+								y: lastValue
+							})
+						}
 					}
+				},
+				y: {
+					min: 0,
+					max: 80
 				}
 			},
-			y: {
-				min: 0,
-				max: 80
-			}
-		},
-		plugins: {
-			legend: {
-				display: false
-			}
-		}
-	}
+			plugins: {
+				legend: { display: false },
+				tooltip: { enabled: false }
+			},
+			events: []
+		}),
+		[periodTime, refreshTime, item.info]
+	)
 
 	useEffect(() => {
 		const chart = chartRef.current
@@ -289,37 +294,42 @@ const ReqWithErr: NextComponentType<PanelProps> = ({ item }) => {
 		]
 	})
 
-	const options: any = {
-		responsive: true,
-		maintainAspectRatio: false,
-		animation: false,
-		scales: {
-			x: {
-				type: 'realtime',
-				realtime: {
-					duration,
-					refresh: refreshTime * 1000,
-					delay: refreshTime * 1000,
-					onRefresh: (chart: any) => {
-						const lastValue =
-							item.info.length > 0 ? item.info[item.info.length - 1] : 0
+	const options: any = useMemo(
+		() => ({
+			responsive: true,
+			maintainAspectRatio: false,
+			animation: false,
+			scales: {
+				x: {
+					type: 'realtime',
+					realtime: {
+						duration,
+						refresh: refreshTime * 1000,
+						delay: refreshTime * 1000,
+						onRefresh: (chart: any) => {
+							const lastValue =
+								item.info.length > 0 ? item.info[item.info.length - 1] : 0
 
-						chart.data.datasets[0].data.push({
-							x: Date.now(),
-							y: lastValue
-						})
+							chart.data.datasets[0].data.push({
+								x: Date.now(),
+								y: lastValue
+							})
+						}
 					}
+				},
+				y: {
+					min: 0,
+					max: 7
 				}
 			},
-			y: {
-				min: 0,
-				max: 7
-			}
-		},
-		plugins: {
-			legend: { display: false }
-		}
-	}
+			plugins: {
+				legend: { display: false },
+				tooltip: { enabled: false }
+			},
+			events: []
+		}),
+		[periodTime, refreshTime, item.info]
+	)
 
 	useEffect(() => {
 		const chart = chartRef.current
@@ -461,6 +471,71 @@ const Memory: NextComponentType<PanelProps> = ({ item }) => {
 					<span>{((item.info.at(-1) || 0) / 1024).toFixed(2)}gb</span>
 					<span>{usage}%</span>
 				</div>
+			</div>
+
+			<motion.div
+				animate={{ backgroundColor: getUsageColor(usage) }}
+				className='animate-blink absolute top-0 right-0 h-4 w-4 rounded-full'
+			/>
+		</div>
+	)
+}
+
+const Disk: NextComponentType<PanelProps> = ({ item }) => {
+	const size = 220
+	const strokeWidth = 18
+	const radius = (size - strokeWidth) / 2
+
+	const fullCircumference = 2 * Math.PI * radius
+
+	const arcLength = fullCircumference * 0.75
+
+	const usage = item.info.at(-1)?.percent || 0
+	const freeDiskSpace = ((item.info.at(-1)?.memory || 0) / 1024).toFixed(2)
+
+	const progressOffset = arcLength - (usage / 100) * arcLength
+
+	return (
+		<div className='relative flex h-full w-full flex-col items-center'>
+			<h2>Disk Info</h2>
+			<div className='relative flex h-full w-full flex-1 items-center justify-center gap-4 py-2'>
+				<svg
+					viewBox={`0 0 ${size} ${size}`}
+					className='z-10 h-full w-auto rotate-[-225deg]'
+				>
+					<circle
+						cx={size / 2}
+						cy={size / 2}
+						r={radius}
+						fill='none'
+						className='stroke-graph'
+						strokeWidth={strokeWidth}
+						strokeDasharray={`${arcLength} ${fullCircumference}`}
+						strokeLinecap='round'
+					/>
+
+					{/* Active **/}
+					<circle
+						cx={size / 2}
+						cy={size / 2}
+						r={radius}
+						fill='none'
+						strokeWidth={strokeWidth}
+						strokeDasharray={`${arcLength} ${fullCircumference}`}
+						strokeDashoffset={progressOffset}
+						strokeLinecap='round'
+						className='stroke-yellow-900 transition-all duration-700 ease-out'
+					/>
+				</svg>
+
+				<div className='absolute bottom-10 left-1/2 flex -translate-x-1/2 transform flex-col items-center text-2xl'>
+					<span>Disk Usage:</span>
+					<span>{usage}%</span>
+				</div>
+			</div>
+
+			<div className='text-text-second absolute -bottom-2 left-1/2 -z-10 -translate-x-1/2 transform text-sm text-nowrap'>
+				Free Disk Space: {freeDiskSpace}gb
 			</div>
 
 			<motion.div

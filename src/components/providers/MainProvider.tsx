@@ -4,7 +4,7 @@ import { PropsWithChildren, useEffect, useState } from 'react'
 
 import { NextComponentType } from '@/types/next-component.type'
 
-import { maxMemory } from '@/config/panels.constant'
+import { maxDisk, maxMemory } from '@/config/panels.constant'
 
 import { usePanelStore } from '@/store/usePanelsStore'
 
@@ -57,6 +57,33 @@ const MainProvider: NextComponentType<PropsWithChildren> = ({ children }) => {
 
 						if (updatedInfo.length > count) updatedInfo.shift()
 						updatedInfo.push(minMax(mem + lastElement, 0, maxMemory))
+
+						changeStaticInfo(name, i, updatedInfo)
+					}
+
+					if (type === 'disk') {
+						const disk = getRandomInt(-7, 7)
+						const diskMemoryChange = getRandomInt(
+							-0.005 * maxDisk,
+							0.005 * maxDisk
+						)
+
+						const lastElement = info.at(-1) || {
+							percent: 50,
+							memory: maxDisk / 4
+						}
+
+						const updatedInfo = [...info]
+
+						if (updatedInfo.length > count) updatedInfo.shift()
+						updatedInfo.push({
+							percent: minMax(disk + lastElement.percent, 0, 100),
+							memory: minMax(
+								diskMemoryChange + lastElement.memory,
+								0,
+								maxDisk / 2
+							)
+						})
 
 						changeStaticInfo(name, i, updatedInfo)
 					}

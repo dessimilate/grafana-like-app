@@ -59,7 +59,8 @@ const defaultEndpointsLayout: LayoutItemGrid[] = [
 
 const defaultStaticLayout: LayoutItemGrid[] = [
 	{ i: '5', x: 0, y: 5, w: 2, h: 3, type: 'cpu', info: [] },
-	{ i: '6', x: 2, y: 5, w: 2, h: 3, type: 'memory', info: [] }
+	{ i: '6', x: 2, y: 5, w: 2, h: 3, type: 'memory', info: [] },
+	{ i: '7', x: 4, y: 5, w: 2, h: 3, type: 'disk', info: [] }
 ]
 
 const defaultStates = {

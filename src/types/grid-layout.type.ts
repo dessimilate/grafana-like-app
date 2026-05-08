@@ -7,10 +7,11 @@ export type PanelBlockType =
 	| 'req-with-err'
 	| 'cpu'
 	| 'memory'
+	| 'disk'
 
 export interface PanelBlock {
 	type: PanelBlockType
-	info: number[]
+	info: any[]
 }
 
 export type LayoutItemGrid = LayoutItem & PanelBlock
