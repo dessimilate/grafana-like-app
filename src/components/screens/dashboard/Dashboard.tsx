@@ -1,6 +1,12 @@
 'use client'
 
-import { LayoutItem, Responsive, useContainerWidth } from 'react-grid-layout'
+import { useState } from 'react'
+import {
+	Layout,
+	LayoutItem,
+	Responsive,
+	useContainerWidth
+} from 'react-grid-layout'
 import { noCompactor } from 'react-grid-layout/core'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
@@ -17,12 +23,54 @@ const Dashboard: NextComponentType = () => {
 
 	const { currentPanel, changeLayout } = usePanelStore()
 
+	const [isDragging, setIsDragging] = useState(false)
+
 	const fullLayout = [
 		...currentPanel.layout.static,
 		...(currentPanel.layout.withEndpoints.find(
 			w => w.endpoint === currentPanel.layout.currentEndpoint
 		)?.data || [])
 	]
+
+	const handleLayoutChange = (layout: Layout) => {
+		const newLayout: LayoutWrapper = {
+			...currentPanel.layout,
+			static: [],
+			withEndpoints: currentPanel.layout.withEndpoints.map(w => ({
+				...w,
+				data: w.endpoint === currentPanel.layout.currentEndpoint ? [] : w.data
+			}))
+		}
+
+		layout.forEach((item: LayoutItem) => {
+			const isStatic = currentPanel.layout.static.some(s => s.i === item.i)
+
+			const originalItem = fullLayout.find(l => l.i === item.i)
+
+			const changedItem = {
+				i: item.i,
+				x: item.x,
+				y: item.y,
+				w: item.w,
+				h: item.h,
+				type: originalItem?.type || 'count-get',
+				info: originalItem?.info || []
+			}
+
+			if (isStatic) {
+				newLayout.static.push(changedItem)
+			} else {
+				const epIndex = newLayout.withEndpoints.findIndex(
+					w => w.endpoint === currentPanel.layout.currentEndpoint
+				)
+				if (epIndex !== -1) {
+					newLayout.withEndpoints[epIndex].data.push(changedItem)
+				}
+			}
+		})
+
+		changeLayout(newLayout)
+	}
 
 	return (
 		<div
@@ -43,49 +91,19 @@ const Dashboard: NextComponentType = () => {
 				margin={[16, 16]}
 				containerPadding={[0, 0]}
 				width={width}
-				compactor={noCompactor}
-				onLayoutChange={layout => {
-					const newLayout: LayoutWrapper = {
-						...currentPanel.layout,
-						static: [],
-						withEndpoints: currentPanel.layout.withEndpoints.map(w => ({
-							...w,
-							data:
-								w.endpoint === currentPanel.layout.currentEndpoint ? [] : w.data
-						}))
-					}
+				// compactor={noCompactor}
 
-					layout.forEach((item: LayoutItem) => {
-						const isStatic = currentPanel.layout.static.some(
-							s => s.i === item.i
-						)
-
-						const originalItem = fullLayout.find(l => l.i === item.i)
-
-						const changedItem = {
-							i: item.i,
-							x: item.x,
-							y: item.y,
-							w: item.w,
-							h: item.h,
-							type: originalItem?.type || 'count-get',
-							info: originalItem?.info || []
-						}
-
-						if (isStatic) {
-							newLayout.static.push(changedItem)
-						} else {
-							const epIndex = newLayout.withEndpoints.findIndex(
-								w => w.endpoint === currentPanel.layout.currentEndpoint
-							)
-							if (epIndex !== -1) {
-								newLayout.withEndpoints[epIndex].data.push(changedItem)
-							}
-						}
-					})
-
-					changeLayout(newLayout)
+				onDragStart={() => setIsDragging(true)}
+				onDragStop={layout => {
+					setIsDragging(false)
+					handleLayoutChange(layout)
 				}}
+				onResizeStart={() => setIsDragging(true)}
+				onResizeStop={layout => {
+					setIsDragging(false)
+					handleLayoutChange(layout)
+				}}
+				onLayoutChange={handleLayoutChange}
 			>
 				{fullLayout.map(item => (
 					<div
