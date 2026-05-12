@@ -25,6 +25,8 @@ interface PanelStates {
 	currentPanel: Panel
 }
 
+// TODO: info: any[] — потеря типобезопасности. Для cpu/memory это number[],
+// для disk это { percent: number; memory: number }[]. Стоит использовать union-тип.
 interface PanelActions {
 	changeCurrentPanel: (name: string) => void
 	addPanel: (name: string) => boolean
@@ -67,6 +69,9 @@ const defaultStates = {
 	...defaultTime,
 	layout: {
 		currentEndpoint: '/api/product/food',
+		// TODO: все эндпоинты ссылаются на один объект defaultEndpointsLayout.
+		// При мутации через immer изменения затронут все панели.
+		// Нужно клонировать: data: defaultEndpointsLayout.map(item => ({ ...item, info: [...item.info] }))
 		withEndpoints: [
 			{ endpoint: '/api/product/food', data: defaultEndpointsLayout },
 			{ endpoint: '/api/product/drinks', data: defaultEndpointsLayout },
@@ -77,6 +82,8 @@ const defaultStates = {
 	}
 }
 
+// TODO: три одинаковых объекта, отличающихся только name.
+// Генерировать из массива: ['Frontend', 'Backend', 'Postgresql'].map(name => ({ name, ...defaultStates }))
 const defaultPanel1: Panel = {
 	name: 'Frontend',
 	...defaultStates
@@ -102,6 +109,10 @@ export const usePanelStore = create<PanelStore>()(
 		immer((set, get) => ({
 			...initState,
 
+			// TODO: АРХИТЕКТУРНАЯ ПРОБЛЕМА — currentPanel дублирует данные из panels[].
+			// Каждый action обновляет и currentPanel, и panels[] — это львиная доля кода и риск рассинхронизации.
+			// Например, можно хранить только currentPanelName (string), а currentPanel вычислять через panels.find().
+
 			//CHANGE CURRENT PANEL
 			changeCurrentPanel: name => {
 				const panel = get().panels.find(panel => panel.name === name)
@@ -113,6 +124,8 @@ export const usePanelStore = create<PanelStore>()(
 			},
 
 			//ADD
+			// TODO: set вызывается всегда, даже когда нет изменений (isExists=true).
+			// Проверку стоит делать до set, и вызывать set только при реальном изменении.
 			addPanel: name => {
 				const isExists = !!get().panels.find(panel => panel.name === name)
 
@@ -126,6 +139,7 @@ export const usePanelStore = create<PanelStore>()(
 			},
 
 			//DELETE
+			// TODO: та же проблема — set вызывается всегда. Проверку делать до set.
 			deletePanel: name => {
 				const index = get().panels.findIndex(panel => panel.name === name)
 				const isExists = index !== -1
@@ -139,6 +153,7 @@ export const usePanelStore = create<PanelStore>()(
 			},
 
 			//CHANGE PERIOD TIME
+			// Если хранить только currentPanelName, этот код сократится до одного присвоения.
 			changePeriodTime: time => {
 				set(state => {
 					state.currentPanel.periodTime = time
@@ -175,6 +190,8 @@ export const usePanelStore = create<PanelStore>()(
 			},
 
 			//CHANGE INFO
+			// TODO: 40 строк дублированной логики.
+			// Также три уровня findIndex - хрупко, стоит вынести в хелпер или утилиту.
 			changeEndpointsInfo: (name, i, endpoint, info) => {
 				set(state => {
 					if (name === state.currentPanel.name) {
@@ -243,6 +260,8 @@ export const usePanelStore = create<PanelStore>()(
 			},
 
 			//CHANGE CURRENT ENDPOINT
+			// TODO: два вызова set — два ре-рендера вместо одного.
+			// С immer можно объединить в один set.
 			changeCurrentEndpoint: (endpoint: string) => {
 				const panelIndex = get().panels.findIndex(
 					panel => panel.name === get().currentPanel.name
@@ -259,12 +278,15 @@ export const usePanelStore = create<PanelStore>()(
 			},
 
 			//GET ACTUAL PANEL
+			// TODO: простая обёртка над get().panels без добавочной логики.
+			// Используется для вызова внутри setInterval (MainProvider) — если так и задумано, ок.
 			getActualPanels: () => {
 				return get().panels
 			}
 		})),
 		{
 			name: 'panel-storage',
+			// TODO: при изменении структуры PanelStates старые данные в localStorage
 			partialize: state => ({
 				panels: state.panels,
 				currentPanel: state.currentPanel

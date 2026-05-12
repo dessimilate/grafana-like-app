@@ -1,6 +1,6 @@
 'use client'
 
-import { Search } from 'lucide-react'
+import { Search } from 'lucide-react'; // Не используемый import.
 import Image from 'next/image'
 
 import { NextComponentType } from '@/types/next-component.type'
