@@ -2,19 +2,19 @@
 
 import { ChevronDown, Clock10 } from 'lucide-react'
 
-import { NextComponentType } from '@/types/next-component.type'
-
 import { usePanelStore } from '@/store/usePanelsStore'
 
 import { useOutside } from '@/hooks/useOutside'
 
-const PeriodTimeButton: NextComponentType = () => {
-	const { currentPanel, changePeriodTime } = usePanelStore()
+const PeriodTimeButton = () => {
+	const { changePeriodTime } = usePanelStore()
+	const periodTime = usePanelStore(
+		state => state.panels[state.currentPanelName].periodTime
+	)
 
 	const { ref, isShow, setIsShow } = useOutside(false)
 
-	const periodMinutes = currentPanel.periodTime
-	const periodHours = Math.floor(periodMinutes / 60)
+	const periodHours = Math.floor(periodTime / 60)
 
 	const periodVariants = [
 		{ label: 'Last 1m', value: 1 },
@@ -32,7 +32,7 @@ const PeriodTimeButton: NextComponentType = () => {
 				<div className='flex gap-1'>
 					<span>Last</span>
 					{!!periodHours && <span>{periodHours}h</span>}
-					{!!(periodMinutes % 60) && <span>{periodMinutes % 60}m</span>}
+					{!!(periodTime % 60) && <span>{periodTime % 60}m</span>}
 				</div>
 				<ChevronDown className='ml-1 w-4' />
 			</button>

@@ -3,19 +3,19 @@
 import { ChevronDown, RefreshCcw } from 'lucide-react'
 import { useState } from 'react'
 
-import { NextComponentType } from '@/types/next-component.type'
-
 import { usePanelStore } from '@/store/usePanelsStore'
 
 import { useOutside } from '@/hooks/useOutside'
 
-const RefreshTimeButton: NextComponentType = () => {
-	const { currentPanel, changeRefreshTime } = usePanelStore()
+const RefreshTimeButton = () => {
+	const { changeRefreshTime } = usePanelStore()
+	const refreshTime = usePanelStore(
+		state => state.panels[state.currentPanelName].refreshTime
+	)
 
 	const { ref, isShow, setIsShow } = useOutside(false)
 
-	const refreshSeconds = currentPanel.refreshTime
-	const refreshMinutes = Math.floor(refreshSeconds / 60)
+	const refreshMinutes = Math.floor(refreshTime / 60)
 
 	const refreshVariants = [
 		{ label: 'Refresh 1s', value: 1 },
@@ -33,7 +33,7 @@ const RefreshTimeButton: NextComponentType = () => {
 				<div className='flex gap-1'>
 					<span>Refresh</span>
 					{!!refreshMinutes && <span>{refreshMinutes}m</span>}
-					{!!(refreshSeconds % 60) && <span>{refreshSeconds % 60}s</span>}
+					{!!(refreshTime % 60) && <span>{refreshTime % 60}s</span>}
 				</div>
 				<ChevronDown className='ml-1 w-4' />
 			</button>

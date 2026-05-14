@@ -1,14 +1,11 @@
 'use client'
 
-import { Search } from 'lucide-react'; // Не используемый import.
 import Image from 'next/image'
-
-import { NextComponentType } from '@/types/next-component.type'
 
 import { usePanelStore } from '@/store/usePanelsStore'
 
-const Sidebar: NextComponentType = () => {
-	const { currentPanel } = usePanelStore()
+const Sidebar = () => {
+	const currentPanelName = usePanelStore(state => state.currentPanelName)
 
 	return (
 		<aside className='bg-background-second fixed top-0 z-1000 flex h-14 w-screen items-center justify-between border-b px-6 py-1'>
@@ -23,17 +20,9 @@ const Sidebar: NextComponentType = () => {
 				<div className='flex gap-2'>
 					<span>Dashboard</span>
 					<span className='text-text-second'>{'>'}</span>
-					<span>{currentPanel?.name}</span>
+					<span>{currentPanelName}</span>
 				</div>
 			</div>
-
-			{/* <div className='bg-background-main flex h-auto items-center border py-0.5'>
-				<Search className='mx-1 h-5' />
-				<input
-					className='h-6 w-50'
-					placeholder='Search'
-				/>
-			</div> */}
 		</aside>
 	)
 }

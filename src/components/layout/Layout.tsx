@@ -1,10 +1,8 @@
 import { PropsWithChildren } from 'react'
 
-import { NextComponentType } from '@/types/next-component.type'
-
 import { Sidebar } from './sidebar/Sidebar'
 
-const Layout: NextComponentType<PropsWithChildren> = ({ children }) => {
+const Layout = ({ children }: PropsWithChildren) => {
 	return (
 		<>
 			<Sidebar />

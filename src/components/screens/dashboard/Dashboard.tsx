@@ -1,75 +1,65 @@
 'use client'
 
-import { useState } from 'react'
-import {
-	Layout,
-	LayoutItem,
-	Responsive,
-	useContainerWidth
-} from 'react-grid-layout'
-import { noCompactor } from 'react-grid-layout/core'
+import { useMemo } from 'react'
+import { Layout, Responsive, useContainerWidth } from 'react-grid-layout'
 import 'react-grid-layout/css/styles.css'
 import 'react-resizable/css/styles.css'
 
-import { NextComponentType } from '@/types/next-component.type'
+import { usePanelStore } from '@/store/usePanelsStore'
 
-import { LayoutWrapper, usePanelStore } from '@/store/usePanelsStore'
+import { mergeLayout } from '@/utils/helpers/dashboardHelpers/layoutMerge'
 
-import { StatisticElement } from './StatisticElement'
 import { Buttons } from './buttons/Buttons'
+import { StatisticElement } from './statisticElements/StatisticElement'
 
-const Dashboard: NextComponentType = () => {
+const Dashboard = () => {
 	const { width, containerRef } = useContainerWidth()
 
-	const { currentPanel, changeLayout } = usePanelStore()
+	const changeLayout = usePanelStore(state => state.changeLayout)
 
-	const [isDragging, setIsDragging] = useState(false)
+	const panelLayout = usePanelStore(
+		state => state.panels[state.currentPanelName]?.layout
+	)
 
-	const fullLayout = [
-		...currentPanel.layout.static,
-		...(currentPanel.layout.withEndpoints.find(
-			w => w.endpoint === currentPanel.layout.currentEndpoint
-		)?.data || [])
-	]
+	const fullLayout = useMemo(() => {
+		if (!panelLayout) return []
+		return [
+			...panelLayout.static,
+			...panelLayout.endpoints[panelLayout.currentEndpoint]
+		]
+	}, [panelLayout])
+
+	const responsiveLayouts = useMemo(
+		() => ({
+			lg: fullLayout,
+			md: fullLayout,
+			sm: fullLayout
+		}),
+		[fullLayout]
+	)
 
 	const handleLayoutChange = (layout: Layout) => {
-		const newLayout: LayoutWrapper = {
-			...currentPanel.layout,
-			static: [],
-			withEndpoints: currentPanel.layout.withEndpoints.map(w => ({
-				...w,
-				data: w.endpoint === currentPanel.layout.currentEndpoint ? [] : w.data
-			}))
-		}
+		console.log('change layout')
+		if (!panelLayout) return
 
-		layout.forEach((item: LayoutItem) => {
-			const isStatic = currentPanel.layout.static.some(s => s.i === item.i)
+		const updatedStatic = mergeLayout(panelLayout.static, layout)
 
-			const originalItem = fullLayout.find(l => l.i === item.i)
+		const updatedEndpoint = mergeLayout(
+			panelLayout.endpoints[panelLayout.currentEndpoint] || [],
+			layout
+		)
 
-			const changedItem = {
-				i: item.i,
-				x: item.x,
-				y: item.y,
-				w: item.w,
-				h: item.h,
-				type: originalItem?.type || 'count-get',
-				info: originalItem?.info || []
-			}
+		changeLayout({
+			...panelLayout,
 
-			if (isStatic) {
-				newLayout.static.push(changedItem)
-			} else {
-				const epIndex = newLayout.withEndpoints.findIndex(
-					w => w.endpoint === currentPanel.layout.currentEndpoint
-				)
-				if (epIndex !== -1) {
-					newLayout.withEndpoints[epIndex].data.push(changedItem)
-				}
+			static: updatedStatic,
+
+			endpoints: {
+				...panelLayout.endpoints,
+
+				[panelLayout.currentEndpoint]: updatedEndpoint
 			}
 		})
-
-		changeLayout(newLayout)
 	}
 
 	return (
@@ -80,37 +70,24 @@ const Dashboard: NextComponentType = () => {
 			<Buttons />
 
 			<Responsive
-				layouts={{
-					lg: fullLayout,
-					md: fullLayout,
-					sm: fullLayout
-				}}
+				layouts={responsiveLayouts}
 				breakpoints={{ lg: 1200, md: 996, sm: 768 }}
 				cols={{ lg: 6, md: 6, sm: 6 }}
 				rowHeight={100}
 				margin={[16, 16]}
 				containerPadding={[0, 0]}
 				width={width}
-				// compactor={noCompactor}
-
-				onDragStart={() => setIsDragging(true)}
-				onDragStop={layout => {
-					setIsDragging(false)
-					handleLayoutChange(layout)
-				}}
-				onResizeStart={() => setIsDragging(true)}
-				onResizeStop={layout => {
-					setIsDragging(false)
-					handleLayoutChange(layout)
-				}}
 				onLayoutChange={handleLayoutChange}
 			>
 				{fullLayout.map(item => (
 					<div
 						key={item.i}
-						className='bg-background-second border'
+						className='bg-background-second border select-none'
 					>
-						<StatisticElement item={item} />
+						<StatisticElement
+							i={item.i}
+							type={item.type}
+						/>
 					</div>
 				))}
 			</Responsive>

@@ -2,294 +2,223 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { immer } from 'zustand/middleware/immer'
 
-import { LayoutItemGrid } from '@/types/grid-layout.type'
+import { InfoType, LayoutItemGrid } from '@/types/LayoutItemGrid.type'
+
+//Panel Types
+interface LayoutEndpoint {
+	[endpoint: string]: LayoutItemGrid[]
+}
 
 export interface LayoutWrapper {
 	currentEndpoint: string
-	withEndpoints: {
-		endpoint: string
-		data: LayoutItemGrid[]
-	}[]
+	endpoints: LayoutEndpoint
 	static: LayoutItemGrid[]
 }
 
 interface Panel {
-	name: string
 	periodTime: number //in minutes
 	refreshTime: number //in secondes
 	layout: LayoutWrapper
+	metrics: PanelMetrics
+}
+
+interface Panels {
+	[panelName: string]: Panel
+}
+
+interface PanelMetrics {
+	endpoints: {
+		[endpoint: string]: {
+			[itemId: string]: InfoType[]
+		}
+	}
+
+	static: {
+		[itemId: string]: InfoType[]
+	}
 }
 
 interface PanelStates {
-	panels: Panel[]
-	currentPanel: Panel
+	panels: Panels
+	currentPanelName: string
 }
 
-// TODO: info: any[] — потеря типобезопасности. Для cpu/memory это number[],
-// для disk это { percent: number; memory: number }[]. Стоит использовать union-тип.
+//Store Types
 interface PanelActions {
-	changeCurrentPanel: (name: string) => void
-	addPanel: (name: string) => boolean
-	deletePanel: (name: string) => boolean
+	changeCurrentPanelName: (name: string) => void
 	changePeriodTime: (time: number) => void
 	changeRefreshTime: (time: number) => void
 	changeLayout: (layout: LayoutWrapper) => void
 	changeEndpointsInfo: (
-		name: string,
-		i: string,
+		panelName: string,
+		layoutIndex: string,
 		endpoint: string,
-		info: any[]
+		info: InfoType[]
 	) => void
-	changeStaticInfo: (name: string, i: string, info: any[]) => void
+	changeStaticInfo: (panelName: string, i: string, info: InfoType[]) => void
 	changeCurrentEndpoint: (endpoint: string) => void
-	getActualPanels: () => Panel[]
+	getActualPanels: () => Panels
 }
 
 export type PanelStore = PanelStates & PanelActions
 
+//Set Default Data
 const defaultTime: Pick<Panel, 'periodTime' | 'refreshTime'> = {
 	periodTime: 5,
 	refreshTime: 1
 }
 
 const defaultEndpointsLayout: LayoutItemGrid[] = [
-	{ i: '1', x: 0, y: 0, w: 2, h: 2, type: 'count-get', info: [] },
-	{ i: '2', x: 2, y: 0, w: 4, h: 2, maxH: 2, type: 'avg-duration', info: [] },
-	{ i: '3', x: 0, y: 2, w: 3, h: 3, minH: 3, type: 'req-per-sec', info: [] },
-	{ i: '4', x: 3, y: 2, w: 3, h: 3, minH: 3, type: 'req-with-err', info: [] }
+	{ i: '1', x: 0, y: 0, w: 2, h: 2, type: 'count-get' },
+	{ i: '2', x: 2, y: 0, w: 4, h: 2, maxH: 2, type: 'avg-duration' },
+	{ i: '3', x: 0, y: 2, w: 3, h: 3, minH: 3, type: 'req-per-sec' },
+	{ i: '4', x: 3, y: 2, w: 3, h: 3, minH: 3, type: 'req-with-err' }
 ]
 
 const defaultStaticLayout: LayoutItemGrid[] = [
-	{ i: '5', x: 0, y: 5, w: 2, h: 3, type: 'cpu', info: [] },
-	{ i: '6', x: 2, y: 5, w: 2, h: 3, type: 'memory', info: [] },
-	{ i: '7', x: 4, y: 5, w: 2, h: 3, type: 'disk', info: [] }
+	{ i: '5', x: 0, y: 5, w: 2, h: 3, type: 'cpu' },
+	{ i: '6', x: 2, y: 5, w: 2, h: 3, type: 'memory' },
+	{ i: '7', x: 4, y: 5, w: 2, h: 3, type: 'disk' }
 ]
 
-const defaultStates = {
+const endpointsArray = [
+	'/api/product/food',
+	'/api/product/drinks',
+	'/api/product/cutlery',
+	'/api/product/snack'
+]
+
+const createDefaultState = (): Panel => ({
 	...defaultTime,
+
 	layout: {
-		currentEndpoint: '/api/product/food',
-		// TODO: все эндпоинты ссылаются на один объект defaultEndpointsLayout.
-		// При мутации через immer изменения затронут все панели.
-		// Нужно клонировать: data: defaultEndpointsLayout.map(item => ({ ...item, info: [...item.info] }))
-		withEndpoints: [
-			{ endpoint: '/api/product/food', data: defaultEndpointsLayout },
-			{ endpoint: '/api/product/drinks', data: defaultEndpointsLayout },
-			{ endpoint: '/api/product/cutlery', data: defaultEndpointsLayout },
-			{ endpoint: '/api/product/snack', data: defaultEndpointsLayout }
-		],
-		static: defaultStaticLayout
+		currentEndpoint: endpointsArray[0],
+
+		endpoints: endpointsArray.reduce<LayoutEndpoint>((acc, endpoint) => {
+			acc[endpoint] = structuredClone(defaultEndpointsLayout)
+			return acc
+		}, {} as LayoutEndpoint),
+
+		static: structuredClone(defaultStaticLayout)
+	},
+
+	metrics: {
+		endpoints: endpointsArray.reduce<PanelMetrics['endpoints']>(
+			(acc, endpoint) => {
+				acc[endpoint] = defaultEndpointsLayout.reduce(
+					(endpointAcc, item) => {
+						endpointAcc[item.i] = []
+						return endpointAcc
+					},
+					{} as { [itemId: string]: InfoType[] }
+				)
+				return acc
+			},
+			{} as PanelMetrics['endpoints']
+		),
+
+		static: defaultStaticLayout.reduce(
+			(acc, item) => {
+				acc[item.i] = []
+				return acc
+			},
+			{} as PanelMetrics['static']
+		)
 	}
-}
+})
 
-// TODO: три одинаковых объекта, отличающихся только name.
-// Генерировать из массива: ['Frontend', 'Backend', 'Postgresql'].map(name => ({ name, ...defaultStates }))
-const defaultPanel1: Panel = {
-	name: 'Frontend',
-	...defaultStates
-}
+const panelsNameArray = ['Frontend', 'Backend', 'Postgresql']
 
-const defaultPanel2: Panel = {
-	name: 'Backend',
-	...defaultStates
-}
-
-const defaultPanel3: Panel = {
-	name: 'Postgresql',
-	...defaultStates
-}
+const defaultPanels = panelsNameArray.reduce<Panels>((acc, name) => {
+	acc[name] = createDefaultState()
+	return acc
+}, {} as Panels)
 
 const initState: PanelStates = {
-	panels: [defaultPanel1, defaultPanel2, defaultPanel3],
-	currentPanel: defaultPanel1
+	panels: defaultPanels,
+	currentPanelName: panelsNameArray[0]
 }
 
+//Store
 export const usePanelStore = create<PanelStore>()(
 	persist(
 		immer((set, get) => ({
 			...initState,
 
-			// TODO: АРХИТЕКТУРНАЯ ПРОБЛЕМА — currentPanel дублирует данные из panels[].
-			// Каждый action обновляет и currentPanel, и panels[] — это львиная доля кода и риск рассинхронизации.
-			// Например, можно хранить только currentPanelName (string), а currentPanel вычислять через panels.find().
-
-			//CHANGE CURRENT PANEL
-			changeCurrentPanel: name => {
-				const panel = get().panels.find(panel => panel.name === name)
-				if (panel) {
-					set(state => {
-						state.currentPanel = panel
-					})
-				}
-			},
-
-			//ADD
-			// TODO: set вызывается всегда, даже когда нет изменений (isExists=true).
-			// Проверку стоит делать до set, и вызывать set только при реальном изменении.
-			addPanel: name => {
-				const isExists = !!get().panels.find(panel => panel.name === name)
+			//Change Current Panel
+			changeCurrentPanelName: name => {
+				const panel = !!get().panels[name]
+				if (!panel) return
 
 				set(state => {
-					const newPanel = { name, ...defaultStates }
-					if (!isExists) state.panels.push(newPanel)
+					state.currentPanelName = name
 				})
-
-				//if not exists -> add panel(return true), else return false
-				return !isExists
 			},
 
-			//DELETE
-			// TODO: та же проблема — set вызывается всегда. Проверку делать до set.
-			deletePanel: name => {
-				const index = get().panels.findIndex(panel => panel.name === name)
-				const isExists = index !== -1
-
-				set(state => {
-					if (isExists) state.panels.splice(index, 1)
-				})
-
-				//if exists -> delete panel(return true), else return false
-				return isExists
-			},
-
-			//CHANGE PERIOD TIME
-			// Если хранить только currentPanelName, этот код сократится до одного присвоения.
+			//Change Period Time
 			changePeriodTime: time => {
 				set(state => {
-					state.currentPanel.periodTime = time
-
-					const index = get().panels.findIndex(
-						panel => panel.name === get().currentPanel.name
-					)
-					if (index !== -1) state.panels[index].periodTime = time
+					state.panels[state.currentPanelName].periodTime = time
 				})
 			},
 
-			//CHANGE REFRESH TIME
+			//Change Refresh Time
 			changeRefreshTime: time => {
 				set(state => {
-					state.currentPanel.refreshTime = time
-
-					const index = get().panels.findIndex(
-						panel => panel.name === get().currentPanel.name
-					)
-					if (index !== -1) state.panels[index].refreshTime = time
+					state.panels[state.currentPanelName].refreshTime = time
 				})
 			},
 
-			//CHANGE LAYOUT
+			//Change Layout
 			changeLayout: layout => {
 				set(state => {
-					state.currentPanel.layout = layout
-
-					const index = get().panels.findIndex(
-						panel => panel.name === get().currentPanel.name
-					)
-					if (index !== -1) state.panels[index].layout = layout
+					state.panels[state.currentPanelName].layout = layout
 				})
 			},
 
-			//CHANGE INFO
-			// TODO: 40 строк дублированной логики.
-			// Также три уровня findIndex - хрупко, стоит вынести в хелпер или утилиту.
-			changeEndpointsInfo: (name, i, endpoint, info) => {
+			//Change Endpoints Info
+			changeEndpointsInfo: (panelName, i, endpoint, info) => {
+				const panel = get().panels[panelName]
+				if (!panel) return
+
 				set(state => {
-					if (name === state.currentPanel.name) {
-						const endpointIndex =
-							state.currentPanel.layout.withEndpoints.findIndex(
-								item => item.endpoint === endpoint
-							)
+					const item = state.panels[panelName].metrics.endpoints[endpoint]
+					if (!item) return
 
-						if (endpointIndex !== -1) {
-							const layoutIndex = state.currentPanel.layout.withEndpoints[
-								endpointIndex
-							].data.findIndex(item => item.i === i)
-							if (layoutIndex !== -1) {
-								state.currentPanel.layout.withEndpoints[endpointIndex].data[
-									layoutIndex
-								].info = info
-							}
-						}
-					}
-
-					const panelIndex = get().panels.findIndex(
-						panel => panel.name === name
-					)
-					if (panelIndex !== -1) {
-						const endpointIndex = state.panels[
-							panelIndex
-						].layout.withEndpoints.findIndex(item => item.endpoint === endpoint)
-						if (endpointIndex !== -1) {
-							const layoutIndex = state.panels[panelIndex].layout.withEndpoints[
-								endpointIndex
-							].data.findIndex(item => item.i === i)
-							if (layoutIndex !== -1) {
-								state.panels[panelIndex].layout.withEndpoints[
-									endpointIndex
-								].data[layoutIndex].info = info
-							}
-						}
-					}
+					item[i] = info
 				})
 			},
 
-			//CHANGE STATIC INFO
-			changeStaticInfo: (name, i, info) => {
+			//Change Static Info
+			changeStaticInfo: (panelName, i, info) => {
+				const panel = get().panels[panelName]
+				if (!panel) return
+
 				set(state => {
-					if (name === state.currentPanel.name) {
-						const layoutIndex = state.currentPanel.layout.static.findIndex(
-							item => item.i === i
-						)
-						if (layoutIndex !== -1) {
-							state.currentPanel.layout.static[layoutIndex].info = info
-						}
-					}
+					const item = state.panels[panelName].metrics.static
+					if (!item) return
 
-					const panelIndex = get().panels.findIndex(
-						panel => panel.name === name
-					)
-					if (panelIndex !== -1) {
-						const layoutIndex = state.panels[
-							panelIndex
-						].layout.static.findIndex(item => item.i === i)
-						if (layoutIndex !== -1) {
-							state.panels[panelIndex].layout.static[layoutIndex].info = info
-						}
-					}
+					item[i] = info
 				})
 			},
 
-			//CHANGE CURRENT ENDPOINT
-			// TODO: два вызова set — два ре-рендера вместо одного.
-			// С immer можно объединить в один set.
+			//Change Current Endpoint
 			changeCurrentEndpoint: (endpoint: string) => {
-				const panelIndex = get().panels.findIndex(
-					panel => panel.name === get().currentPanel.name
-				)
-				if (panelIndex !== -1) {
-					set(state => {
-						state.panels[panelIndex].layout.currentEndpoint = endpoint
-					})
-				}
-
 				set(state => {
-					state.currentPanel.layout.currentEndpoint = endpoint
+					state.panels[state.currentPanelName].layout.currentEndpoint = endpoint
 				})
 			},
 
-			//GET ACTUAL PANEL
-			// TODO: простая обёртка над get().panels без добавочной логики.
-			// Используется для вызова внутри setInterval (MainProvider) — если так и задумано, ок.
+			//Get Actual Panels
 			getActualPanels: () => {
 				return get().panels
 			}
 		})),
 		{
 			name: 'panel-storage',
-			// TODO: при изменении структуры PanelStates старые данные в localStorage
 			partialize: state => ({
 				panels: state.panels,
-				currentPanel: state.currentPanel
+				currentPanelName: state.currentPanelName
 			})
 		}
 	)
