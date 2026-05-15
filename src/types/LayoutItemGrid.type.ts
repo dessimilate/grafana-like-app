@@ -1,5 +1,6 @@
 import { LayoutItem } from 'react-grid-layout'
 
+//Для сравнения типов в StatisticElement.tsx
 export const PANEL_BLOCK_TYPES_STATIC = {
 	cpu: 'cpu',
 	memory: 'memory',
